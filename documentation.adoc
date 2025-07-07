@@ -1,0 +1,1281 @@
+= Multi-Database Person Management System
+:toc:
+:toc-title: Table of Contents
+:toclevels: 3
+:sectnums:
+:sectlinks:
+:sectanchors:
+:source-highlighter: highlight.js
+:icons: font
+:imagesdir: images
+:doctype: book
+:encoding: utf-8
+:lang: en
+:docinfo: shared
+
+[abstract]
+== Abstract
+
+This document provides comprehensive documentation for the Multi-Database Person Management System, a Spring Boot application that demonstrates multiple database configuration with CRUD operations and stored procedure integration using Jakarta EE, Spring Data JPA, and Thymeleaf.
+
+== Overview
+
+The Multi-Database Person Management System is a Spring Boot web application that showcases how to configure and manage multiple databases within a single application. It provides a complete web interface for performing CRUD (Create, Read, Update, Delete) operations on Person entities across two separate PostgreSQL databases.
+
+=== Key Features
+
+* *Multiple Database Support*: Separate primary and secondary databases with independent configuration
+* *CRUD Operations*: Complete Create, Read, Update, Delete functionality for both databases
+* *Stored Procedures*: Integration with PostgreSQL stored procedures across multiple schemas
+* *Web Interface*: Responsive Thymeleaf-based web UI with Bootstrap styling
+* *Transaction Management*: Separate transaction managers for each database ensuring data consistency
+* *Error Handling*: Comprehensive error handling and user feedback
+
+=== Business Case
+
+This application addresses scenarios where:
+
+* Data needs to be distributed across multiple databases
+* Different databases serve different business domains
+* Legacy systems require integration with modern applications
+* Database migration strategies need to be implemented
+* High availability and load distribution are requirements
+
+== Architecture
+
+The application follows a layered architecture pattern that separates concerns and promotes maintainability:
+
+....
+┌─────────────────────────────────────────────────────────────┐
+│                    Presentation Layer                       │
+│                   (Thymeleaf Templates)                     │
+│                     Bootstrap UI                            │
+├─────────────────────────────────────────────────────────────┤
+│                    Controller Layer                         │
+│                   (PersonController)                        │
+│                   REST Endpoints                            │
+├─────────────────────────────────────────────────────────────┤
+│                    Service Layer                            │
+│                   (Repository Interfaces)                   │
+│                   Business Logic                            │
+├─────────────────────────────────────────────────────────────┤
+│                    Data Access Layer                        │
+│              (Spring Data JPA Repositories)                 │
+│                 Entity Managers                             │
+├─────────────────────────────────────────────────────────────┤
+│                    Database Layer                           │
+│            (Primary DB)          (Secondary DB)             │
+│         PostgreSQL Instance    PostgreSQL Instance          │
+└─────────────────────────────────────────────────────────────┘
+....
+
+=== Architectural Patterns
+
+==== Multi-Database Configuration Pattern
+
+The application implements a multi-database configuration pattern where:
+
+* Each database has its own `DataSource` configuration
+* Separate `EntityManagerFactory` instances manage different entity packages
+* Independent `TransactionManager` instances handle transactions
+* Repository interfaces are segregated by database
+
+==== Repository Pattern
+
+Spring Data JPA repositories provide:
+
+* Standard CRUD operations through `JpaRepository`
+* Custom query methods
+* Stored procedure integration
+* Automatic transaction management
+
+==== MVC Pattern
+
+The web layer implements Model-View-Controller pattern:
+
+* *Model*: Person entities and data transfer objects
+* *View*: Thymeleaf templates with Bootstrap styling
+* *Controller*: PersonController handling HTTP requests
+
+== Technology Stack
+
+=== Core Technologies
+
+[cols="1,2,3"]
+|===
+|Technology |Version |Purpose
+
+|Java |24 |Programming language and runtime environment
+|Spring Boot |3.x |Application framework and auto-configuration
+|Spring Data JPA |3.x |Data access layer abstraction
+|Spring MVC |3.x |Web framework for REST endpoints
+|Jakarta EE |10+ |Enterprise Java specifications
+|Thymeleaf |3.x |Server-side template engine
+|Lombok |1.18+ |Code generation library
+|PostgreSQL |12+ |Primary database management system
+|HikariCP |5.x |High-performance JDBC connection pool
+|Bootstrap |5.1 |Frontend CSS framework
+|===
+
+=== Development Tools
+
+* *Maven*: Build automation and dependency management
+* *Spring Boot DevTools*: Development-time features
+* *Spring Boot Actuator*: Production-ready features
+
+== Project Structure
+
+----
+src/
+├── main/
+│   ├── java/
+│   │   └── org/example/spdemo/
+│   │       ├── controller/
+│   │       │   └── PersonController.java          # Web controller
+│   │       ├── primary/                          # Primary database package
+│   │       │   ├── Person.java                   # Primary entity
+│   │       │   └── PersonRepository1.java        # Primary repository
+│   │       ├── secondary/                        # Secondary database package
+│   │       │   ├── Person.java                   # Secondary entity
+│   │       │   └── PersonRepository2.java        # Secondary repository
+│   │       ├── PrimaryDatabaseConfig.java        # Primary DB configuration
+│   │       ├── SecondaryDatabaseConfig.java      # Secondary DB configuration
+│   │       └── SpDemoApplication.java            # Main application class
+│   └── resources/
+│       ├── templates/                            # Thymeleaf templates
+│       │   └── persons/
+│       │       ├── list.html                     # List view template
+│       │       ├── add.html                      # Add form template
+│       │       ├── edit.html                     # Edit form template
+│       │       └── procedures.html               # Procedures view template
+│       ├── static/                               # Static resources
+│       │   ├── css/
+│       │   ├── js/
+│       │   └── images/
+│       └── application.properties                # Application configuration
+└── test/
+    └── java/
+        └── org/example/spdemo/                   # Test classes
+            └── SpDemoApplicationTests.java
+----
+
+== Database Configuration
+
+=== Multi-Database Strategy
+
+The application employs a multi-database strategy with the following components:
+
+==== Primary Database Configuration
+
+The primary database serves as the main data store:
+
+* *Bean Names*: `primaryDataSource`, `primaryEntityManagerFactory`, `primaryTransactionManager`
+* *Entity Package*: `org.example.spdemo.primary`
+* *Repository Package*: `org.example.spdemo.primary`
+* *Persistence Unit*: `primary`
+
+==== Secondary Database Configuration
+
+The secondary database provides additional data storage:
+
+* *Bean Names*: `secondaryDataSource`, `secondaryEntityManagerFactory`, `secondaryTransactionManager`
+* *Entity Package*: `org.example.spdemo.secondary`
+* *Repository Package*: `org.example.spdemo.secondary`
+* *Persistence Unit*: `secondary`
+
+=== Configuration Properties
+
+[source,properties]
+----
+# Server Configuration
+server.port=8080
+
+# Primary Database Configuration
+spring.datasource.primary.url=jdbc:postgresql://localhost:5432/primary_db
+spring.datasource.primary.username=your_username
+spring.datasource.primary.password=your_password
+spring.datasource.primary.driver-class-name=org.postgresql.Driver
+
+# Secondary Database Configuration
+spring.datasource.secondary.url=jdbc:postgresql://localhost:5432/secondary_db
+spring.datasource.secondary.username=your_username
+spring.datasource.secondary.password=your_password
+spring.datasource.secondary.driver-class-name=org.postgresql.Driver
+
+# JPA Configuration
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
+
+# Connection Pool Configuration
+spring.datasource.primary.configuration.maximum-pool-size=20
+spring.datasource.primary.configuration.minimum-idle=5
+spring.datasource.secondary.configuration.maximum-pool-size=15
+spring.datasource.secondary.configuration.minimum-idle=3
+
+# Logging Configuration
+logging.level.org.hibernate.engine.transaction.jta.platform.internal.JtaPlatformInitiator=WARN
+logging.level.org.springframework.web=INFO
+logging.level.org.hibernate.SQL=DEBUG
+logging.level.org.hibernate.type.descriptor.sql.BasicBinder=TRACE
+----
+
+=== Database Schema
+
+Both databases use identical schema structure:
+
+[source,sql]
+----
+-- Person table structure
+CREATE TABLE person (
+    id VARCHAR(255) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
+);
+
+-- Indexes for performance
+CREATE INDEX idx_person_name ON person(name);
+----
+
+== Entity Model
+
+=== Person Entity
+
+The Person entity represents the core data model used across both databases:
+
+==== Entity Structure
+
+[cols="1,2,3"]
+|===
+|Field |Type |Description
+
+|id |String |Primary key identifier
+|name |String |Person's full name
+|===
+
+==== Entity Annotations
+
+* *@Entity*: Marks the class as a JPA entity
+* *@Id*: Designates the primary key field
+* *@Data*: Lombok annotation generating getters, setters, toString, equals, and hashCode methods
+
+==== Package Separation
+
+The Person entity is duplicated in both packages to maintain strict separation:
+
+* *Primary Package*: `org.example.spdemo.primary.Person`
+* *Secondary Package*: `org.example.spdemo.secondary.Person`
+
+This approach ensures:
+
+* Clear separation of concerns
+* Independent schema evolution
+* Type safety between databases
+* Flexibility in entity customization
+
+== Repository Layer
+
+=== Repository Design Pattern
+
+The repository layer implements the Repository pattern using Spring Data JPA:
+
+==== PersonRepository1 (Primary Database)
+
+Located in `org.example.spdemo.primary` package:
+
+* *Base Interface*: `JpaRepository<Person, String>`
+* *Entity Type*: `org.example.spdemo.primary.Person`
+* *ID Type*: `String`
+
+===== Standard Operations
+
+* `findAll()`: Retrieve all persons
+* `findById(String id)`: Find person by ID
+* `save(Person person)`: Save or update person
+* `deleteById(String id)`: Delete person by ID
+* `count()`: Count total persons
+
+===== Custom Stored Procedures
+
+* `getPersonCount()`: Executes `public.get_person_count`
+* `getPersonCount2()`: Executes `schema1.get_person_count`
+
+==== PersonRepository2 (Secondary Database)
+
+Located in `org.example.spdemo.secondary` package:
+
+* *Base Interface*: `JpaRepository<Person, String>`
+* *Entity Type*: `org.example.spdemo.secondary.Person`
+* *ID Type*: `String`
+
+Provides identical functionality to PersonRepository1 but operates on the secondary database.
+
+=== Stored Procedure Integration
+
+==== Procedure Configuration
+
+[source,java]
+----
+@Procedure(name = "get_person_count", procedureName = "public.get_person_count")
+Integer getPersonCount();
+
+@Procedure(name = "get_person_count_2", procedureName = "schema1.get_person_count")
+Integer getPersonCount2();
+----
+
+==== Database Procedures
+
+[source,sql]
+----
+-- Create the stored procedure in public schema
+CREATE OR REPLACE FUNCTION public.get_person_count()
+RETURNS INTEGER AS $$
+BEGIN
+    RETURN (SELECT COUNT(*) FROM person);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create schema1 if it doesn't exist
+CREATE SCHEMA IF NOT EXISTS schema1;
+
+-- Create the stored procedure in schema1
+CREATE OR REPLACE FUNCTION schema1.get_person_count()
+RETURNS INTEGER AS $$
+BEGIN
+    RETURN (SELECT COUNT(*) FROM person);
+END;
+$$ LANGUAGE plpgsql;
+----
+
+== Web Layer
+
+=== Controller Architecture
+
+The PersonController serves as the main entry point for web requests:
+
+==== Request Mapping Structure
+
+[cols="1,2,3"]
+|===
+|HTTP Method |Endpoint |Description
+
+|GET |`/persons` |Display all persons from both databases
+|GET |`/persons/add` |Show form to add new persons
+|POST |`/persons/add/primary` |Add person to primary database
+|POST |`/persons/add/secondary` |Add person to secondary database
+|GET |`/persons/edit/primary/{id}` |Show edit form for primary database
+|GET |`/persons/edit/secondary/{id}` |Show edit form for secondary database
+|POST |`/persons/edit/primary` |Update person in primary database
+|POST |`/persons/edit/secondary` |Update person in secondary database
+|GET |`/persons/delete/primary/{id}` |Delete person from primary database
+|GET |`/persons/delete/secondary/{id}` |Delete person from secondary database
+|GET |`/persons/procedures` |Execute and display stored procedures
+|===
+
+==== Controller Features
+
+* *Dependency Injection*: Autowired repositories for both databases
+* *Model Binding*: Automatic form data binding to entity objects
+* *Validation*: Input validation and error handling
+* *Redirection*: Post-redirect-get pattern implementation
+* *Exception Handling*: Graceful error handling and user feedback
+
+=== View Layer (Thymeleaf Templates)
+
+==== Template Structure
+
+The view layer consists of four main templates:
+
+===== List Template (`list.html`)
+
+Features:
+* Displays persons from both databases in separate tables
+* Bootstrap-styled responsive tables
+* Action buttons for edit and delete operations
+* Visual distinction between primary and secondary databases
+
+===== Add Template (`add.html`)
+
+Features:
+* Dual forms for adding to either database
+* Form validation with required fields
+* Bootstrap form styling
+* Clear database selection interface
+
+===== Edit Template (`edit.html`)
+
+Features:
+* Dynamic form based on database selection
+* Pre-populated form fields
+* Read-only ID field to prevent key modification
+* Database-specific styling
+
+===== Procedures Template (`procedures.html`)
+
+Features:
+* Displays stored procedure results
+* Error handling and display
+* Refresh functionality
+* Results comparison between databases
+
+==== Template Features
+
+* *Responsive Design*: Bootstrap-based mobile-friendly interface
+* *Internationalization Ready*: Structure supports i18n
+* *Security*: CSRF protection and XSS prevention
+* *Accessibility*: Proper ARIA labels and semantic HTML
+
+== Installation and Setup
+
+=== Prerequisites
+
+==== System Requirements
+
+* *Java Development Kit*: JDK 24 or higher
+* *Build Tool*: Apache Maven 3.6.0 or higher
+* *Database*: PostgreSQL 12 or higher
+* *IDE*: IntelliJ IDEA, Eclipse, or VS Code (optional)
+
+==== Database Setup
+
+. *Install PostgreSQL*:
++
+[source,bash]
+----
+# Ubuntu/Debian
+sudo apt-get install postgresql postgresql-contrib
+
+# CentOS/RHEL
+sudo yum install postgresql postgresql-server
+
+# macOS
+brew install postgresql
+----
+
+. *Create Databases*:
++
+[source,sql]
+----
+-- Connect to PostgreSQL as superuser
+CREATE DATABASE primary_db;
+CREATE DATABASE secondary_db;
+
+-- Create application user
+CREATE USER app_user WITH PASSWORD 'secure_password';
+
+-- Grant permissions
+GRANT ALL PRIVILEGES ON DATABASE primary_db TO app_user;
+GRANT ALL PRIVILEGES ON DATABASE secondary_db TO app_user;
+----
+
+. *Create Required Stored Procedures*:
++
+Run the stored procedure creation scripts in both databases.
+
+=== Application Setup
+
+==== Step 1: Clone and Build
+
+[source,bash]
+----
+# Clone the repository
+git clone <repository-url>
+cd multipledatasources
+
+# Build the application
+mvn clean install
+----
+
+==== Step 2: Configure Application
+
+Edit `src/main/resources/application.properties`:
+
+[source,properties]
+----
+# Update database connection details
+spring.datasource.primary.url=jdbc:postgresql://localhost:5432/primary_db
+spring.datasource.primary.username=app_user
+spring.datasource.primary.password=secure_password
+
+spring.datasource.secondary.url=jdbc:postgresql://localhost:5432/secondary_db
+spring.datasource.secondary.username=app_user
+spring.datasource.secondary.password=secure_password
+----
+
+==== Step 3: Run Application
+
+[source,bash]
+----
+# Run using Maven
+mvn spring-boot:run
+
+# Or run the JAR file
+java -jar target/multipledatasources-1.0.0.jar
+----
+
+==== Step 4: Access Application
+
+Open your web browser and navigate to:
+
+* *Main Interface*: http://localhost:8080/persons
+* *Health Check*: http://localhost:8080/actuator/health (if actuator is enabled)
+
+== Configuration Reference
+
+=== Database Configuration Properties
+
+==== Primary Database Properties
+
+[source,properties]
+----
+# Connection Properties
+spring.datasource.primary.url=jdbc:postgresql://localhost:5432/primary_db
+spring.datasource.primary.username=username
+spring.datasource.primary.password=password
+spring.datasource.primary.driver-class-name=org.postgresql.Driver
+
+# HikariCP Configuration
+spring.datasource.primary.configuration.maximum-pool-size=20
+spring.datasource.primary.configuration.minimum-idle=5
+spring.datasource.primary.configuration.connection-timeout=30000
+spring.datasource.primary.configuration.idle-timeout=600000
+spring.datasource.primary.configuration.max-lifetime=1800000
+----
+
+==== Secondary Database Properties
+
+[source,properties]
+----
+# Connection Properties
+spring.datasource.secondary.url=jdbc:postgresql://localhost:5432/secondary_db
+spring.datasource.secondary.username=username
+spring.datasource.secondary.password=password
+spring.datasource.secondary.driver-class-name=org.postgresql.Driver
+
+# HikariCP Configuration
+spring.datasource.secondary.configuration.maximum-pool-size=15
+spring.datasource.secondary.configuration.minimum-idle=3
+spring.datasource.secondary.configuration.connection-timeout=30000
+spring.datasource.secondary.configuration.idle-timeout=600000
+spring.datasource.secondary.configuration.max-lifetime=1800000
+----
+
+=== JPA Configuration Properties
+
+[source,properties]
+----
+# Hibernate Properties
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
+
+# Additional Hibernate Properties
+spring.jpa.properties.hibernate.jdbc.batch_size=20
+spring.jpa.properties.hibernate.order_inserts=true
+spring.jpa.properties.hibernate.order_updates=true
+spring.jpa.properties.hibernate.jdbc.batch_versioned_data=true
+----
+
+=== Logging Configuration
+
+[source,properties]
+----
+# Application Logging
+logging.level.org.example.spdemo=DEBUG
+logging.level.org.springframework.web=INFO
+logging.level.org.springframework.orm.jpa=DEBUG
+logging.level.org.springframework.transaction=DEBUG
+
+# Hibernate Logging
+logging.level.org.hibernate.SQL=DEBUG
+logging.level.org.hibernate.type.descriptor.sql.BasicBinder=TRACE
+
+# Suppress JTA Warning
+logging.level.org.hibernate.engine.transaction.jta.platform.internal.JtaPlatformInitiator=WARN
+----
+
+== Usage Guide
+
+=== Basic Operations
+
+==== Viewing Persons
+
+. Navigate to http://localhost:8080/persons
+. View persons from both databases in separate tables
+. Use the responsive interface on mobile devices
+
+==== Adding Persons
+
+. Click "Add New Person" button
+. Choose between Primary or Secondary database
+. Fill in the required fields:
+  * *ID*: Unique identifier (required)
+  * *Name*: Person's name (required)
+. Click the appropriate "Add" button
+
+==== Editing Persons
+
+. Click "Edit" button next to a person
+. Modify the name field (ID is read-only)
+. Click "Update Person" to save changes
+
+==== Deleting Persons
+
+. Click "Delete" button next to a person
+. Confirm deletion in the dialog
+. Person will be removed from the respective database
+
+==== Viewing Stored Procedures
+
+. Click "View Procedures" button
+. View count results from both databases
+. Use "Refresh Results" to update the data
+
+=== Advanced Features
+
+==== Database Procedure Integration
+
+The application demonstrates stored procedure integration:
+
+* *Schema Separation*: Procedures in different schemas
+* *Error Handling*: Graceful handling of procedure failures
+* *Result Display*: Clean presentation of procedure results
+
+==== Multi-Database Transactions
+
+* Each database maintains independent transactions
+* No distributed transactions (XA) are used
+* Failure in one database doesn't affect the other
+
+==== Responsive Design
+
+* Bootstrap-based responsive interface
+* Mobile-friendly navigation
+* Accessible design patterns
+
+== API Reference
+
+=== REST Endpoints
+
+While primarily a web application, the controller exposes REST-like endpoints:
+
+==== GET /persons
+
+Returns the main persons management page.
+
+*Response*: HTML page with persons from both databases
+
+==== POST /persons/add/primary
+
+Adds a person to the primary database.
+
+*Parameters*:
+* `id` (String): Person ID
+* `name` (String): Person name
+
+*Response*: Redirect to persons list
+
+==== POST /persons/add/secondary
+
+Adds a person to the secondary database.
+
+*Parameters*:
+* `id` (String): Person ID
+* `name` (String): Person name
+
+*Response*: Redirect to persons list
+
+==== GET /persons/edit/{database}/{id}
+
+Shows edit form for a specific person.
+
+*Path Parameters*:
+* `database` (String): "primary" or "secondary"
+* `id` (String): Person ID
+
+*Response*: HTML edit form
+
+==== POST /persons/edit/{database}
+
+Updates a person in the specified database.
+
+*Path Parameters*:
+* `database` (String): "primary" or "secondary"
+
+*Parameters*:
+* `id` (String): Person ID
+* `name` (String): Person name
+
+*Response*: Redirect to persons list
+
+==== GET /persons/delete/{database}/{id}
+
+Deletes a person from the specified database.
+
+*Path Parameters*:
+* `database` (String): "primary" or "secondary"
+* `id` (String): Person ID
+
+*Response*: Redirect to persons list
+
+==== GET /persons/procedures
+
+Shows stored procedure results.
+
+*Response*: HTML page with procedure results
+
+=== Error Responses
+
+Common error scenarios and their handling:
+
+==== Database Connection Errors
+
+* *Cause*: Database unavailable or incorrect credentials
+* *Response*: Error page with connection failure message
+* *Resolution*: Check database configuration and connectivity
+
+==== Validation Errors
+
+* *Cause*: Invalid input data (empty fields, duplicate IDs)
+* *Response*: Form redisplay with error messages
+* *Resolution*: Correct input data and resubmit
+
+==== Stored Procedure Errors
+
+* *Cause*: Procedure doesn't exist or execution failure
+* *Response*: Error message on procedures page
+* *Resolution*: Verify procedure exists and has correct permissions
+
+== Troubleshooting
+
+=== Common Issues
+
+==== Issue: JTA Platform Warning
+
+*Symptom*:
+[source,console]
+----
+HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+----
+
+*Cause*: Hibernate informational message about JTA availability
+
+*Solution*: This is informational only. To suppress:
+[source,properties]
+----
+logging.level.org.hibernate.engine.transaction.jta.platform.internal.JtaPlatformInitiator=WARN
+----
+
+==== Issue: Database Connection Failure
+
+*Symptoms*:
+* Application fails to start
+* Connection timeout errors
+* Authentication failures
+
+*Diagnostics*:
+. Check database server status
+. Verify connection parameters
+. Test database connectivity
+. Check firewall settings
+
+*Solutions*:
+. Ensure PostgreSQL is running
+. Verify database URLs and credentials
+. Check network connectivity
+. Update firewall rules
+
+==== Issue: Entity Manager Configuration
+
+*Symptoms*:
+* Bean creation errors
+* Repository injection failures
+* Entity not found errors
+
+*Diagnostics*:
+. Check package scanning configuration
+. Verify entity class locations
+. Review repository interface definitions
+
+*Solutions*:
+. Ensure entities are in correct packages
+. Verify @EnableJpaRepositories configuration
+. Check @EntityScan annotations
+
+==== Issue: Stored Procedure Execution
+
+*Symptoms*:
+* Procedure not found errors
+* Permission denied errors
+* Invalid procedure results
+
+*Diagnostics*:
+. Verify procedure exists in database
+. Check procedure permissions
+. Review procedure syntax
+
+*Solutions*:
+. Create missing procedures
+. Grant execute permissions
+. Fix procedure implementation
+
+=== Debug Configuration
+
+Enable detailed logging for troubleshooting:
+
+[source,properties]
+----
+# Enable debug logging
+logging.level.org.springframework.orm.jpa=DEBUG
+logging.level.org.springframework.transaction=DEBUG
+logging.level.org.hibernate=DEBUG
+logging.level.org.hibernate.SQL=DEBUG
+logging.level.org.hibernate.type.descriptor.sql.BasicBinder=TRACE
+
+# Enable web debug logging
+logging.level.org.springframework.web=DEBUG
+logging.level.org.springframework.web.servlet.DispatcherServlet=DEBUG
+----
+
+=== Performance Tuning
+
+==== Database Connection Pool
+
+Optimize HikariCP settings:
+
+[source,properties]
+----
+# Primary database pool
+spring.datasource.primary.configuration.maximum-pool-size=20
+spring.datasource.primary.configuration.minimum-idle=5
+spring.datasource.primary.configuration.connection-timeout=30000
+spring.datasource.primary.configuration.idle-timeout=600000
+spring.datasource.primary.configuration.max-lifetime=1800000
+
+# Secondary database pool
+spring.datasource.secondary.configuration.maximum-pool-size=15
+spring.datasource.secondary.configuration.minimum-idle=3
+----
+
+==== JPA Performance
+
+Optimize Hibernate settings:
+
+[source,properties]
+----
+# Batch processing
+spring.jpa.properties.hibernate.jdbc.batch_size=20
+spring.jpa.properties.hibernate.order_inserts=true
+spring.jpa.properties.hibernate.order_updates=true
+
+# Second-level cache (if needed)
+spring.jpa.properties.hibernate.cache.use_second_level_cache=true
+spring.jpa.properties.hibernate.cache.region.factory_class=org.hibernate.cache.ehcache.EhCacheRegionFactory
+----
+
+== Development Guidelines
+
+=== Code Standards
+
+==== Java Code Style
+
+* Follow standard Java naming conventions
+* Use meaningful variable and method names
+* Add JavaDoc comments for public methods
+* Implement proper exception handling
+* Use Lombok annotations judiciously
+
+==== Database Design
+
+* Use consistent naming conventions
+* Implement proper indexing strategies
+* Add foreign key constraints where appropriate
+* Document stored procedures
+* Use transactions appropriately
+
+==== Testing Strategy
+
+* Write unit tests for repositories
+* Create integration tests for controllers
+* Test database configurations
+* Validate stored procedure functionality
+* Test error scenarios
+
+=== Adding New Features
+
+==== Adding a New Entity
+
+. Create entity class in appropriate package
+. Define repository interface
+. Update database configuration if needed
+. Create controller methods
+. Add Thymeleaf templates
+. Write tests
+
+==== Adding a New Database
+
+. Create new database configuration class
+. Define new package structure
+. Update repository scanning
+. Add new transaction manager
+. Update templates and controller
+. Test configuration
+
+==== Adding New Stored Procedures
+
+. Create procedure in database
+. Add method to repository interface
+. Update controller to handle procedure calls
+. Add UI elements for procedure results
+. Test procedure execution
+
+== Security Considerations
+
+=== Database Security
+
+==== Connection Security
+
+* Use strong passwords for database users
+* Implement connection encryption (SSL/TLS)
+* Restrict database access by IP address
+* Use connection pooling with appropriate limits
+
+==== Access Control
+
+* Create dedicated application database users
+* Grant minimal required permissions
+* Use schema-level security where appropriate
+* Implement audit logging
+
+=== Application Security
+
+==== Input Validation
+
+* Validate all user inputs
+* Sanitize data before database operations
+* Use parameterized queries (handled by JPA)
+* Implement CSRF protection
+
+==== Authentication and Authorization
+
+While not implemented in this basic version, consider:
+
+* Spring Security integration
+* Role-based access control
+* Session management
+* Password policies
+
+=== Best Practices
+
+* Keep database credentials secure
+* Use environment variables for sensitive configuration
+* Implement proper logging without exposing sensitive data
+* Regular security updates and patches
+* Monitor database access patterns
+
+== Deployment
+
+=== Production Deployment
+
+==== Environment Configuration
+
+Create production-specific `application-prod.properties`:
+
+[source,properties]
+----
+# Production database configurations
+spring.datasource.primary.url=${PRIMARY_DB_URL}
+spring.datasource.primary.username=${PRIMARY_DB_USERNAME}
+spring.datasource.primary.password=${PRIMARY_DB_PASSWORD}
+
+spring.datasource.secondary.url=${SECONDARY_DB_URL}
+spring.datasource.secondary.username=${SECONDARY_DB_USERNAME}
+spring.datasource.secondary.password=${SECONDARY_DB_PASSWORD}
+
+# Production JPA settings
+spring.jpa.hibernate.ddl-auto=validate
+spring.jpa.show-sql=false
+
+# Production logging
+logging.level.org.hibernate.SQL=WARN
+logging.level.org.hibernate.type.descriptor.sql.BasicBinder=WARN
+----
+
+==== Build for Production
+
+[source,bash]
+----
+# Build production JAR
+mvn clean package -Pprod
+
+# Run with production profile
+java -jar -Dspring.profiles.active=prod target/multipledatasources-1.0.0.jar
+----
+
+==== Docker Deployment
+
+Create `Dockerfile`:
+
+[source,dockerfile]
+----
+FROM openjdk:24-jdk-slim
+
+VOLUME /tmp
+COPY target/multipledatasources-1.0.0.jar app.jar
+ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"]
+----
+
+Create `docker-compose.yml`:
+
+[source,yaml]
+----
+version: '3.8'
+services:
+  app:
+    build: target/generated-sources/annotations
+    ports:
+      - "8080:8080"
+    depends_on:
+      - primary-db
+      - secondary-db
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - PRIMARY_DB_URL=jdbc:postgresql://primary-db:5432/primary_db
+      - SECONDARY_DB_URL=jdbc:postgresql://secondary-db:5432/secondary_db
+
+  primary-db:
+    image: postgres:13
+    environment:
+      - POSTGRES_DB=primary_db
+      - POSTGRES_USER=app_user
+      - POSTGRES_PASSWORD=secure_password
+    volumes:
+      - primary-data:/var/lib/postgresql/data
+
+  secondary-db:
+    image: postgres:13
+    environment:
+      - POSTGRES_DB=secondary_db
+      - POSTGRES_USER=app_user
+      - POSTGRES_PASSWORD=secure_password
+    volumes:
+      - secondary-data:/var/lib/postgresql/data
+
+volumes:
+  primary-data:
+  secondary-data:
+----
+
+== Maintenance and Monitoring
+
+=== Health Checks
+
+Add Spring Boot Actuator for monitoring:
+
+[source,xml]
+----
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+----
+
+Enable health endpoints:
+
+[source,properties]
+----
+management.endpoints.web.exposure.include=health,info,metrics
+management.endpoint.health.show-details=always
+----
+
+=== Database Monitoring
+
+* Monitor connection pool usage
+* Track query performance
+* Monitor stored procedure execution times
+* Set up alerts for database connectivity issues
+
+=== Application Monitoring
+
+* Monitor application performance metrics
+* Track error rates and response times
+* Set up log aggregation
+* Implement distributed tracing if needed
+
+== Conclusion
+
+The Multi-Database Person Management System demonstrates enterprise-grade patterns for:
+
+* Multiple database configuration and management
+* Clean separation of concerns through layered architecture
+* Integration of stored procedures with modern Spring applications
+* Responsive web interface development
+* Comprehensive error handling and user experience
+
+This documentation provides the foundation for understanding, extending, and maintaining the system. The modular design allows for easy expansion to additional databases, entities, and features while maintaining code quality and system reliability.
+
+For additional support, refer to the Spring Boot documentation, Spring Data JPA reference, and PostgreSQL documentation for specific technical details.
+
+== Appendices
+
+=== Appendix A: Maven Dependencies
+
+[source,xml]
+----
+<dependencies>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-thymeleaf</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.postgresql</groupId>
+        <artifactId>postgresql</artifactId>
+        <scope>runtime</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+        <optional>true</optional>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-test</artifactId>
+        <scope>test</scope>
+    </dependency>
+</dependencies>
+----
+
+=== Appendix B: SQL Scripts
+
+==== Database Creation Script
+
+[source,sql]
+----
+-- Create databases
+CREATE DATABASE primary_db;
+CREATE DATABASE secondary_db;
+
+-- Create application user
+CREATE USER app_user WITH PASSWORD 'secure_password';
+
+-- Grant permissions
+GRANT ALL PRIVILEGES ON DATABASE primary_db TO app_user;
+GRANT ALL PRIVILEGES ON DATABASE secondary_db TO app_user;
+
+-- Connect to each database and create tables
+\c primary_db;
+CREATE TABLE person (
+    id VARCHAR(255) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
+);
+CREATE INDEX idx_person_name ON person(name);
+
+\c secondary_db;
+CREATE TABLE person (
+    id VARCHAR(255) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
+);
+CREATE INDEX idx_person_name ON person(name);
+----
+
+==== Stored Procedures Script
+
+[source,sql]
+----
+-- For both databases, create these procedures
+
+-- Create the stored procedure in public schema
+CREATE OR REPLACE FUNCTION public.get_person_count()
+RETURNS INTEGER AS $$
+BEGIN
+    RETURN (SELECT COUNT(*) FROM person);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create schema1 if it doesn't exist
+CREATE SCHEMA IF NOT EXISTS schema1;
+
+-- Create the stored procedure in schema1
+CREATE OR REPLACE FUNCTION schema1.get_person_count()
+RETURNS INTEGER AS $$
+BEGIN
+    RETURN (SELECT COUNT(*) FROM person);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Grant execute permissions
+GRANT EXECUTE ON FUNCTION public.get_person_count() TO app_user;
+GRANT EXECUTE ON FUNCTION schema1.get_person_count() TO app_user;
+----
+
+=== Appendix C: Configuration Templates
+
+==== Development Configuration
+
+[source,properties]
+----
+# Development environment configuration
+spring.profiles.active=dev
+
+# Database Configuration
+spring.datasource.primary.url=jdbc:postgresql://localhost:5432/primary_db
+spring.datasource.primary.username=app_user
+spring.datasource.primary.password=dev_password
+
+spring.datasource.secondary.url=jdbc:postgresql://localhost:5432/secondary_db
+spring.datasource.secondary.username=app_user
+spring.datasource.secondary.password=dev_password
+
+# JPA Configuration
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+
+# Logging
+logging.level.org.example.spdemo=DEBUG
+logging.level.org.hibernate.SQL=DEBUG
+----
+
+==== Production Configuration
+
+[source,properties]
+----
+# Production environment configuration
+spring.profiles.active=prod
+
+# Database Configuration
+spring.datasource.primary.url=${PRIMARY_DB_URL}
+spring.datasource.primary.username=${PRIMARY_DB_USERNAME}
+spring.datasource.primary.password=${PRIMARY_DB_PASSWORD}
+
+spring.datasource.secondary.url=${SECONDARY_DB_URL}
+spring.datasource.secondary.username=${SECONDARY_DB_USERNAME}
+spring.datasource.secondary.password=${SECONDARY_DB_PASSWORD}
+
+# JPA Configuration
+spring.jpa.hibernate.ddl-auto=validate
+spring.jpa.show-sql=false
+
+# Logging
+logging.level.org.example.spdemo=INFO
+logging.level.org.hibernate.SQL=WARN
+----
+
+---
+*Document Version*: 1.0 +
+*Last Updated*: {docdate} +
+*Author*: Development Team +
+*Status*: Production Ready

@@ -1,4 +1,4 @@
-package org.example.spdemo;
+package org.example.spdemo.primary;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
